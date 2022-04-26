@@ -16,6 +16,7 @@
 # along with cashocs.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
+import subprocess
 
 from fenics import *
 import numpy as np
@@ -47,6 +48,7 @@ J = u * dx
 
 def test_int_eq_constraints():
     cfg = cashocs.load_config(dir_path + "/config_sop.ini")
+    cfg.set("Output", "result_dir", dir_path + "/out")
     mesh.coordinates()[:, :] = initial_coordinates
     mesh.bounding_box_tree().build(mesh)
     constraint = cashocs.EqualityConstraint(1 * dx, 1.0)
@@ -55,15 +57,26 @@ def test_int_eq_constraints():
     )
     problem.solve(method="AL", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
     mesh.coordinates()[:, :] = initial_coordinates
     mesh.bounding_box_tree().build(mesh)
     problem.solve(method="QP", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
 
 def test_int_ineq_constraints():
     cfg = cashocs.load_config(dir_path + "/config_sop.ini")
+    cfg.set("Output", "result_dir", dir_path + "/out")
     mesh.coordinates()[:, :] = initial_coordinates
     mesh.bounding_box_tree().build(mesh)
     constraint = cashocs.InequalityConstraint(1 * dx, upper_bound=1.5, lower_bound=0.0)
@@ -72,8 +85,18 @@ def test_int_ineq_constraints():
     )
     problem.solve(method="AL", tol=1e-2, mu_0=1e-0)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
     mesh.coordinates()[:, :] = initial_coordinates
     mesh.bounding_box_tree().build(mesh)
     problem.solve(method="QP", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)

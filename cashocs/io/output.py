@@ -155,18 +155,9 @@ class ConstrainedOutputManager:
             )
             self.result_dir = f"{self.result_dir}_{self.suffix}"
 
-        save_txt = self.config.getboolean("Output", "save_txt")
-        save_results = self.config.getboolean("Output", "save_results")
-        save_pvd = self.config.getboolean("Output", "save_pvd")
-        save_pvd_adjoint = self.config.getboolean("Output", "save_pvd_adjoint")
-        save_pvd_gradient = self.config.getboolean("Output", "save_pvd_gradient")
-        has_output = (
-            save_txt
-            or save_results
-            or save_pvd
-            or save_pvd_gradient
-            or save_pvd_adjoint
-        )
+        save_txt = self.config.getboolean("Constraints.Output", "save_txt")
+        save_results = self.config.getboolean("Constraints.Output", "save_results")
+        has_output = save_txt or save_results
 
         if not os.path.isdir(self.result_dir):
             if has_output:
@@ -182,11 +173,7 @@ class ConstrainedOutputManager:
         # self.pvd_file_manager = managers.PVDFileManager(
         #     optimization_problem, self.result_dir
         # )
-        # self.result_manager = managers.ResultManager(
-        #     optimization_problem, self.result_dir
-        # )
         # self.mesh_manager =managers.MeshManager(optimization_problem, self.result_dir)
-        # self.temp_file_manager = managers.TempFileManager(optimization_problem)
 
     def output(self, solver: solvers.ConstrainedSolver) -> None:
         """Writes the desired output to files and console.

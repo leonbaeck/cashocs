@@ -16,6 +16,7 @@
 # along with cashocs.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
+import subprocess
 
 from fenics import *
 import numpy as np
@@ -156,11 +157,17 @@ def test_int_eq_constraints_only():
     constraint = cashocs.EqualityConstraint(y * y * dx, 1.0)
     cfg = cashocs.load_config(dir_path + "/config_ocp.ini")
     cfg.set("Output", "verbose", "False")
+    cfg.set("Output", "result_dir", dir_path + "/out")
     problem = cashocs.ConstrainedOptimalControlProblem(
         F, bcs, J, y, u, p, constraint, config=cfg
     )
     problem.solve(method="AL", tol=1e-1)
     assert constraint.constraint_violation() < 1e-2
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
     u.vector()[:] = 1.0
     problem = cashocs.ConstrainedOptimalControlProblem(
@@ -168,6 +175,11 @@ def test_int_eq_constraints_only():
     )
     problem.solve(method="QP", tol=1e-1)
     assert constraint.constraint_violation() < 1e-2
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
 
 def test_pw_eq_constraints_only():
@@ -175,11 +187,17 @@ def test_pw_eq_constraints_only():
     constraint = cashocs.EqualityConstraint(y + u, 0.0, dx)
     cfg = cashocs.load_config(dir_path + "/config_ocp.ini")
     cfg.set("Output", "verbose", "False")
+    cfg.set("Output", "result_dir", dir_path + "/out")
     problem = cashocs.ConstrainedOptimalControlProblem(
         F, bcs, J, y, u, p, constraint, config=cfg
     )
     problem.solve(method="AL", tol=1e-1)
     assert constraint.constraint_violation() < 1e-2
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
     u.vector()[:] = 1.0
     problem = cashocs.ConstrainedOptimalControlProblem(
@@ -187,18 +205,29 @@ def test_pw_eq_constraints_only():
     )
     problem.solve(method="QP", tol=1e-1)
     assert constraint.constraint_violation() < 1e-2
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
 
 def test_int_ineq_constraints_only():
     u.vector()[:] = 0.0
     J = pow(y - Constant(1.0), 2) * dx
     cfg = cashocs.load_config(dir_path + "/config_ocp.ini")
+    cfg.set("Output", "result_dir", dir_path + "/out")
     constraint = cashocs.InequalityConstraint(y * y * dx, upper_bound=0.5)
     problem = cashocs.ConstrainedOptimalControlProblem(
         F, bcs, J, y, u, p, constraint, config=cfg
     )
     problem.solve(method="AL", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
     u.vector()[:] = 0.0
     problem = cashocs.ConstrainedOptimalControlProblem(
@@ -206,20 +235,36 @@ def test_int_ineq_constraints_only():
     )
     problem.solve(method="QP", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
     u.vector()[:] = 0.0
     J = pow(y - Constant(0.1), 2) * dx
     cfg = cashocs.load_config(dir_path + "/config_ocp.ini")
+    cfg.set("Output", "result_dir", dir_path + "/out")
     constraint = cashocs.InequalityConstraint(y * y * dx, lower_bound=0.5)
     problem = cashocs.ConstrainedOptimalControlProblem(
         F, bcs, J, y, u, p, constraint, config=cfg
     )
     problem.solve(method="AL", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
     u.vector()[:] = 0.0
     problem.solve(method="QP", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
 
 def test_pw_ineq_constraints_only():
@@ -227,6 +272,7 @@ def test_pw_ineq_constraints_only():
     J = pow(y - Constant(1.0), 2) * dx
     cfg = cashocs.load_config(dir_path + "/config_ocp.ini")
     cfg.set("OptimizationRoutine", "maximum_iterations", "250")
+    cfg.set("Output", "result_dir", dir_path + "/out")
     constraint = cashocs.InequalityConstraint(y, upper_bound=0.5, measure=dx)
     problem = cashocs.ConstrainedOptimalControlProblem(
         F, bcs, J, y, u, p, constraint, config=cfg
@@ -245,12 +291,18 @@ def test_pw_ineq_constraints_only():
     J = pow(y - Constant(-1), 2) * dx
     cfg = cashocs.load_config(dir_path + "/config_ocp.ini")
     cfg.set("OptimizationRoutine", "maximum_iterations", "250")
+    cfg.set("Output", "result_dir", dir_path + "/out")
     constraint = cashocs.InequalityConstraint(y, lower_bound=-0.5, measure=dx)
     problem = cashocs.ConstrainedOptimalControlProblem(
         F, bcs, J, y, u, p, constraint, config=cfg
     )
     problem.solve(method="AL", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
     u.vector()[:] = 0.0
     problem = cashocs.ConstrainedOptimalControlProblem(
@@ -258,11 +310,17 @@ def test_pw_ineq_constraints_only():
     )
     problem.solve(method="QP", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
     lin_expr = Expression("2*(x[0] - 0.5)", degree=1)
     u.vector()[:] = 0.0
     J = pow(y - lin_expr, 2) * dx
     cfg = cashocs.load_config(dir_path + "/config_ocp.ini")
+    cfg.set("Output", "result_dir", dir_path + "/out")
     cfg.set("OptimizationRoutine", "maximum_iterations", "250")
     constraint = cashocs.InequalityConstraint(
         y, lower_bound=-0.5, upper_bound=0.5, measure=dx
@@ -272,6 +330,11 @@ def test_pw_ineq_constraints_only():
     )
     problem.solve(method="AL", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
 
     u.vector()[:] = 0.0
     problem = cashocs.ConstrainedOptimalControlProblem(
@@ -279,3 +342,8 @@ def test_pw_ineq_constraints_only():
     )
     problem.solve(method="QP", tol=1e-2)
     assert constraint.constraint_violation() <= 1e-3
+    assert os.path.isdir(f"{dir_path}/out")
+    assert os.path.isfile(dir_path + f"/out/history_constrained.txt")
+
+    if MPI.rank(MPI.comm_world) == 0:
+        subprocess.run(["rm", "-r", f"{dir_path}/out"], check=True)
