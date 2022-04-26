@@ -28,12 +28,12 @@ from typing_extensions import Literal
 import ufl
 
 from cashocs import _utils
+from cashocs import io
 from cashocs._constraints import solvers
 from cashocs._optimization import optimal_control
 from cashocs._optimization import shape_optimization
 
 if TYPE_CHECKING:
-    from cashocs import io
     from cashocs import types
 
 
@@ -112,7 +112,10 @@ class ConstrainedOptimizationProblem(abc.ABC):
         self.bcs_list = bcs_list
         self.states = states
         self.adjoints = adjoints
-        self.config = config
+        if config is None:
+            self.config = io.Config()
+        else:
+            self.config = config
         self.initial_guess = initial_guess
         self.ksp_options = ksp_options
         self.adjoint_ksp_options = adjoint_ksp_options

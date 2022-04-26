@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 import subprocess  # nosec B404
-from typing import List, TYPE_CHECKING, Union
+from typing import Dict, List, TYPE_CHECKING, Union
 
 import fenics
 import numpy as np
@@ -31,6 +31,8 @@ from cashocs.io import mesh as iomesh
 
 if TYPE_CHECKING:
     from cashocs import _optimization as op
+    from cashocs import io
+    from cashocs._constraints import solvers
     from cashocs._optimization import optimization_algorithms
 
 
@@ -111,6 +113,54 @@ def generate_output_str(
     return "".join(strs)
 
 
+def generate_constrained_str(solver: solvers.ConstrainedSolver) -> str:
+    """Generates the string which can be written to console and file.
+
+    Args:
+        solver: The optimization algorithm.
+
+    Returns:
+        The output string, which is used later.
+
+    """
+    solver_name = solver.solver_name
+    iteration = solver.iterations
+    objective_value = solver.constrained_problem.current_function_value
+    constraint_violation = solver.constraint_violation
+    penalty_mu = solver.mu
+
+    strs = [
+        f"{solver_name} - Iteration {iteration:4d} -",
+        f" Objective value: {objective_value:.3e}",
+        f"    Constraint violation: {constraint_violation:.3e}",
+        f"    Penalty parameter mu: {penalty_mu:.3e}",
+    ]
+
+    return "".join(strs)
+
+
+def generate_constrained_summary_str(solver: solvers.ConstrainedSolver) -> str:
+    """Generates a string for the summary of the constrained optimization.
+
+    Args:
+        solver: The solver for the constrained problem.
+
+    Returns:
+        The summary string
+
+    """
+    objective_value = solver.constrained_problem.current_function_value
+    strs = [
+        "\n",
+        f"Statistics --- Total iterations:  {solver.iterations:4d}",
+        f" --- Final objective value:  {objective_value:.3e}",
+        f" --- Final constraint violation:  {solver.constraint_violation:.3e}",
+        "\n",
+    ]
+
+    return "".join(strs)
+
+
 class ResultManager:
     """Class for managing the output of the optimization history."""
 
@@ -186,6 +236,54 @@ class ResultManager:
                 json.dump(self.output_dict, file)
 
 
+class ConstrainedResultManager:
+    """Class for managing the output of the constained optimization history."""
+
+    def __init__(self, config: io.Config, result_dir: str) -> None:
+        """Initializes self.
+
+        Args:
+            config: The configuration of the problem
+            result_dir: Path to the directory, where the results are saved.
+
+        """
+        self.config = config
+        self.result_dir = result_dir
+
+        self.save_results = self.config.getboolean("Constraints.Output", "save_results")
+
+        self.output_dict: Dict[str, List[float]] = {}
+        self.output_dict["objective_value"] = []
+        self.output_dict["constraint_violation"] = []
+        self.output_dict["mu"] = []
+
+    def save_to_dict(self, solver: solvers.ConstrainedSolver) -> None:
+        """Saves the optimization history to a dictionary.
+
+        Args:
+            solver: The optimization algorithm.
+
+        """
+        self.output_dict["objective_value"].append(
+            solver.constrained_problem.current_function_value
+        )
+        self.output_dict["constraint_violation"].append(solver.constraint_violation)
+        self.output_dict["mu"].append(solver.mu)
+
+    def save_to_json(self, solver: solvers.ConstrainedSolver) -> None:
+        """Saves the history of the optimization to a .json file.
+
+        Args:
+            solver: The optimization algorithm.
+
+        """
+        if self.save_results and fenics.MPI.rank(fenics.MPI.comm_world) == 0:
+            with open(
+                f"{self.result_dir}/history_constrained.json", "w", encoding="utf-8"
+            ) as file:
+                json.dump(self.output_dict, file)
+
+
 class HistoryManager:
     """Class for managing the human-readable output of cashocs."""
 
@@ -219,7 +317,7 @@ class HistoryManager:
     def print_to_file(
         self, solver: optimization_algorithms.OptimizationAlgorithm
     ) -> None:
-        """Saves the output string in a file.
+        """Saves the output string to a file.
 
         Args:
             solver: The optimization algorithm.
@@ -260,6 +358,75 @@ class HistoryManager:
         if self.save_txt and fenics.MPI.rank(fenics.MPI.comm_world) == 0:
             with open(f"{self.result_dir}/history.txt", "a", encoding="utf-8") as file:
                 file.write(generate_summary_str(solver))
+
+
+class ConstrainedHistoryManager:
+    """Class for managing the output of cashocs for constrained problems."""
+
+    def __init__(self, config: io.Config, result_dir: str) -> None:
+        """Initializes self.
+
+        Args:
+            config: The configuration for the problem
+            result_dir: Path to the directory, where the results are saved.
+
+        """
+        self.result_dir = result_dir
+        self.verbose = config.getboolean("Constraints.Output", "verbose")
+        self.save_txt = config.getboolean("Constraints.Output", "save_txt")
+
+    def print_to_console(self, solver: solvers.ConstrainedSolver) -> None:
+        """Prints the output string (for constrained problems) to the console.
+
+        Args:
+            solver: The solver for the constrained problem
+
+        """
+        if self.verbose and fenics.MPI.rank(fenics.MPI.comm_world) == 0:
+            print(generate_constrained_str(solver))
+
+    def print_to_file(self, solver: solvers.ConstrainedSolver) -> None:
+        """Saves the output string to a file.
+
+        Args:
+            solver: The solver for the constrained problem.
+
+        """
+        if self.save_txt and fenics.MPI.rank(fenics.MPI.comm_world) == 0:
+            if solver.iterations == 0:
+                file_attr = "w"
+            else:
+                file_attr = "a"
+
+            with open(
+                f"{self.result_dir}/history_constrained.txt",
+                file_attr,
+                encoding="utf-8",
+            ) as file:
+                file.write(f"{generate_constrained_str(solver)}\n")
+
+    def print_console_summary(self, solver: solvers.ConstrainedSolver) -> None:
+        """Prints the summary in the console.
+
+        Args:
+            solver: The solver for the constrained problem.
+
+        """
+        if self.verbose and fenics.MPI.rank(fenics.MPI.comm_world) == 0:
+            print(generate_constrained_summary_str(solver))
+
+    def print_file_summary(self, solver: solvers.ConstrainedSolver) -> None:
+        """Saves the summary in the output file.
+
+        Args:
+            solver: The solver for the constrained problem.
+
+        """
+        if self.save_txt and fenics.MPI.rank(fenics.MPI.comm_world) == 0:
+            with open(
+                f"{self.result_dir}/history_constrained.txt", "a", encoding="utf-8"
+            ) as file:
+                file.write(generate_constrained_summary_str(solver))
 
 
 class TempFileManager:

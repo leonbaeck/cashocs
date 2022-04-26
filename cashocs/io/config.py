@@ -491,6 +491,17 @@ class Config(ConfigParser):
                     "type": "bool",
                 },
             },
+            "Constraints.Output": {
+                "verbose": {
+                    "type": "bool",
+                },
+                "save_txt": {
+                    "type": "bool",
+                },
+                "save_results": {
+                    "type": "bool",
+                },
+            },
             "Debug": {
                 "remeshing": {
                     "type": "bool",
@@ -615,6 +626,11 @@ save_pvd_gradient = False
 save_mesh = False
 result_dir = ./results
 time_suffix = False
+
+[Constraints.Output]
+verbose = True
+save_txt = True
+save_results = True
 
 [Debug]
 remeshing = False

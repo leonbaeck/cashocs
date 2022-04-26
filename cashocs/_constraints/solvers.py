@@ -28,6 +28,7 @@ import ufl.core.expr
 
 from cashocs import _loggers
 from cashocs import _utils
+from cashocs import io
 from cashocs._constraints import constraints
 from cashocs._optimization import cost_functional
 
@@ -39,6 +40,9 @@ class ConstrainedSolver(abc.ABC):
     """A solver for a constrained optimization problem."""
 
     solver_name: str
+    iterations: int
+    constraint_violation: float
+    mu: float
 
     def __init__(
         self,
@@ -93,6 +97,8 @@ class ConstrainedSolver(abc.ABC):
         self.beta = 10.0
         self.inner_cost_functional_shift = 0.0
 
+        self.output_manager = io.ConstrainedOutputManager(self.constrained_problem)
+
     @abc.abstractmethod
     def _update_cost_functional(self) -> None:
         """Updates the cost functional with new weights."""
@@ -125,16 +131,13 @@ class ConstrainedSolver(abc.ABC):
         """
         pass
 
-    def print_results(self) -> None:
-        """Prints the results of the current iteration to the console."""
-        strs = [
-            f"{self.solver_name} - Iteration {self.iterations:4d} -",
-            f" Objective value: {self.constrained_problem.current_function_value:.3e}",
-            f"    Constraint violation: {self.constraint_violation:.3e}",
-            f"    Penalty parameter mu: {self.mu:.3e}",
-        ]
-        if fenics.MPI.rank(fenics.MPI.comm_world) == 0:
-            print("".join(strs))
+    def output(self) -> None:
+        """Performs various output tasks, such as writing to the console."""
+        self.output_manager.output(self)
+
+    def output_summary(self) -> None:
+        """Outputs a summary of the constrained optimization."""
+        self.output_manager.output_summary(self)
 
 
 class AugmentedLagrangianMethod(ConstrainedSolver):
@@ -408,14 +411,13 @@ class AugmentedLagrangianMethod(ConstrainedSolver):
                 self.constrained_problem.total_constraint_violation()
             )
 
-            self.print_results()
+            self.output()
 
             if self.constraint_violation > self.gamma * self.constraint_violation_prev:
                 self.mu *= self.beta
 
             if self.constraint_violation <= convergence_tol:
-                if fenics.MPI.rank(fenics.MPI.comm_world) == 0:
-                    print(f"{self.solver_name} converged successfully.\n")
+                self.output_summary()
                 break
 
             if self.iterations >= max_iter:
@@ -490,11 +492,10 @@ class QuadraticPenaltyMethod(ConstrainedSolver):
             )
             self.mu *= self.beta
 
-            self.print_results()
+            self.output()
 
             if self.constraint_violation <= convergence_tol:
-                if fenics.MPI.rank(fenics.MPI.comm_world) == 0:
-                    print(f"{self.solver_name} converged successfully.\n")
+                self.output_summary()
                 break
 
             if self.iterations >= max_iter:
